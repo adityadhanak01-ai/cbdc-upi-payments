@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CBDC-UPI International Payments</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f0f; color: #f0f0f0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+    .oracle-strip { width: 100%; background: #111; border-bottom: 1px solid #222; padding: 7px 0; overflow: hidden; white-space: nowrap; }
+    .oracle-inner { display: inline-flex; animation: scroll 24s linear infinite; }
+    @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+    .oracle-item { display: inline-flex; align-items: center; gap: 6px; padding: 0 20px; border-right: 1px solid #222; }
+    .o-pair { font-size: 11px; font-weight: 600; color: #777; }
+    .o-rate { font-size: 11px; color: #fff; font-weight: 500; }
+    .o-change { font-size: 10px; }
+    .up { color: #34c77b; }
+    .down { color: #f87171; }
+    .app { width: 100%; max-width: 440px; padding: 28px 20px 40px; }
+    .app-header { text-align: center; margin-bottom: 24px; }
+    .app-title { font-size: 22px; font-weight: 600; color: #fff; }
+    .app-sub { font-size: 13px; color: #666; margin-top: 4px; }
+    .live-badge { display: inline-block; font-size: 11px; padding: 2px 10px; background: #0d2b1a; color: #34c77b; border: 1px solid #1a5c35; border-radius: 20px; margin-top: 8px; }
+    .nav { display: flex; background: #1a1a1a; border-radius: 12px; padding: 4px; margin-bottom: 22px; gap: 4px; }
+    .nav-btn { flex: 1; padding: 9px 0; font-size: 12px; font-weight: 500; border: none; background: transparent; color: #666; cursor: pointer; border-radius: 8px; transition: all 0.2s; }
+    .nav-btn.active { background: #2a2a2a; color: #fff; }
+    .screen { display: none; }
+    .screen.visible { display: block; }
+    .card { background: #1a1a1a; border-radius: 16px; padding: 22px; margin-bottom: 12px; }
+    .fl { font-size: 11px; color: #666; margin-bottom: 5px; margin-top: 14px; display: block; }
+    .fl:first-child { margin-top: 0; }
+    .fi { width: 100%; background: #242424; border: 1px solid #2e2e2e; border-radius: 10px; padding: 9px 12px; font-size: 13px; color: #fff; outline: none; box-sizing: border-box; }
+    .fi:focus { border-color: #444; }
+    select.fi { cursor: pointer; }
+    .fi-row { display: flex; gap: 8px; }
+    .fi-row .fi-wrap { flex: 2; }
+    .fi-row .fi-cur { flex: 1; }
+    .amt-input { font-size: 20px; font-weight: 600; }
+    .rate-box { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding: 9px 13px; background: #0d2b1a; border-radius: 10px; border: 1px solid #1a5c35; }
+    .rate-lbl { font-size: 11px; color: #34c77b; }
+    .rate-val { font-size: 12px; font-weight: 600; color: #34c77b; }
+    .conv-box { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; padding: 13px; background: #111d2e; border-radius: 10px; border: 1px solid #1a3a5c; }
+    .conv-lbl { font-size: 11px; color: #5b9bd5; }
+    .conv-val { font-size: 20px; font-weight: 700; color: #5b9bd5; }
+    .send-btn { width: 100%; padding: 13px; background: #1a6ef5; border: none; border-radius: 12px; color: #fff; font-size: 14px; font-weight: 600; margin-top: 18px; cursor: pointer; transition: background 0.2s; }
+    .send-btn:hover { background: #1558c0; }
+    .track-header { text-align: center; margin-bottom: 24px; }
+    .track-amount { font-size: 24px; font-weight: 700; color: #fff; }
+    .track-to { font-size: 13px; color: #666; margin-top: 5px; }
+    .seg-bar { display: flex; gap: 4px; height: 10px; border-radius: 8px; overflow: hidden; margin-bottom: 8px; }
+    .seg { flex: 1; background: #2a2a2a; transition: background 0.6s ease; }
+    .seg.on-blue { background: #1a6ef5; }
+    .seg.on-purple { background: #7c3aed; }
+    .seg.on-teal { background: #059669; }
+    .seg-labels { display: flex; margin-bottom: 18px; }
+    .seg-lbl { flex: 1; text-align: center; font-size: 11px; color: #444; transition: color 0.3s; }
+    .seg-lbl.active-blue { color: #5b9bd5; font-weight: 600; }
+    .seg-lbl.active-purple { color: #a78bfa; font-weight: 600; }
+    .seg-lbl.active-teal { color: #34c77b; font-weight: 600; }
+    .status-line { text-align: center; font-size: 13px; color: #666; min-height: 20px; margin-bottom: 16px; }
+    .success-box { text-align: center; padding: 16px 0 4px; }
+    .success-circle { width: 52px; height: 52px; border-radius: 50%; background: #0d2b1a; border: 2px solid #34c77b; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; }
+    .check { width: 22px; height: 22px; stroke: #34c77b; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+    .success-title { font-size: 17px; font-weight: 600; color: #fff; }
+    .success-sub { font-size: 13px; color: #666; margin-top: 5px; }
+    .txn-ref { font-size: 11px; color: #444; margin-top: 6px; }
+    .new-btn { margin-top: 18px; width: 100%; padding: 11px; background: #242424; border: 1px solid #333; border-radius: 12px; font-size: 13px; color: #777; cursor: pointer; }
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+    .stat-card { background: #242424; border-radius: 12px; padding: 13px; }
+    .stat-lbl { font-size: 11px; color: #555; margin-bottom: 5px; }
+    .stat-val { font-size: 22px; font-weight: 700; color: #fff; }
+    .stat-sub { font-size: 10px; color: #444; margin-top: 3px; }
+    .ledger-hdr { font-size: 11px; color: #444; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; font-weight: 500; }
+    .ledger { border: 1px solid #242424; border-radius: 12px; overflow: hidden; }
+    .l-row { display: flex; align-items: center; padding: 11px 13px; border-bottom: 1px solid #1e1e1e; gap: 10px; }
+    .l-row:last-child { border-bottom: none; }
+    .l-dot { width: 7px; height: 7px; border-radius: 50%; background: #34c77b; flex-shrink: 0; }
+    .l-info { flex: 1; min-width: 0; }
+    .l-name { font-size: 12px; color: #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .l-meta { font-size: 10px; color: #444; margin-top: 2px; }
+    .l-right { text-align: right; flex-shrink: 0; }
+    .l-amt { font-size: 12px; font-weight: 600; color: #34c77b; }
+    .l-conv { font-size: 10px; color: #444; }
+    .l-settled { font-size: 10px; padding: 1px 6px; border-radius: 10px; background: #0d2b1a; color: #34c77b; display: inline-block; margin-top: 2px; }
+    .empty-state { text-align: center; padding: 28px; font-size: 13px; color: #444; }
+    .node-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+    .node-card { background: #242424; border-radius: 12px; padding: 12px; border: 1px solid #2a2a2a; transition: all 0.4s; }
+    .node-card.active { border-color: #7c3aed; background: #1a1040; }
+    .node-card.approved { border-color: #059669; background: #0d2b1a; }
+    .node-name { font-size: 12px; font-weight: 500; color: #888; margin-bottom: 4px; }
+    .node-card.active .node-name { color: #a78bfa; }
+    .node-card.approved .node-name { color: #34c77b; }
+    .node-status { font-size: 10px; color: #444; }
+    .node-card.active .node-status { color: #7c3aed; }
+    .node-card.approved .node-status { color: #059669; }
+    .node-dot { width: 8px; height: 8px; border-radius: 50%; background: #333; display: inline-block; margin-right: 5px; transition: background 0.4s; }
+    .node-card.active .node-dot { background: #7c3aed; }
+    .node-card.approved .node-dot { background: #34c77b; }
+    .block-hdr { font-size: 11px; color: #444; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; font-weight: 500; }
+    .block-chain { display: flex; flex-direction: column; gap: 8px; }
+    .block-item { background: #242424; border-radius: 10px; padding: 10px 12px; border: 1px solid #2a2a2a; }
+    .block-item.new-block { border-color: #059669; animation: flashblock 1s ease; }
+    @keyframes flashblock { 0% { border-color: #34c77b; background: #0d2b1a; } 100% { border-color: #2a2a2a; background: #242424; } }
+    .block-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .block-num { font-size: 11px; font-weight: 500; color: #34c77b; }
+    .block-time { font-size: 10px; color: #444; }
+    .block-hash { font-size: 10px; color: #555; font-family: monospace; margin-bottom: 3px; }
+    .block-txn { font-size: 11px; color: #888; }
+    .net-empty { text-align: center; padding: 28px; font-size: 13px; color: #444; }
+    .consensus-bar { display: flex; gap: 3px; margin-top: 6px; }
+    .vote { flex: 1; height: 3px; border-radius: 2px; background: #333; transition: background 0.4s; }
+    .vote.cast { background: #34c77b; }
+  </style>
+</head>
+<body>
+
+  <div class="oracle-strip">
+    <div class="oracle-inner" id="oracle-inner"></div>
+  </div>
+
+  <div class="app">
+    <div class="app-header">
+      <div class="app-title">CBDC · UPI Payments</div>
+      <div class="app-sub">International settlement system</div>
+      <div class="live-badge">● Live</div>
+    </div>
+
+    <div class="nav">
+      <button class="nav-btn active" onclick="goScreen('send',0)">Send</button>
+      <button class="nav-btn" onclick="goScreen('track',1)">Track</button>
+      <button class="nav-btn" onclick="goScreen('dash',2)">Dashboard</button>
+      <button class="nav-btn" onclick="goScreen('net',3)">Network</button>
+    </div>
+
+    <div class="screen visible" id="screen-send">
+      <div class="card">
+        <span class="fl">From</span>
+        <div class="fi-row">
+          <div class="fi-wrap"><input class="fi" type="text" id="sender" value="rahul@oksbi" placeholder="yourname@bank"></div>
+          <div class="fi-cur">
+            <select class="fi" id="fromCurrency" onchange="updateConversion()">
+              <option value="INR">🇮🇳 INR</option>
+              <option value="GBP">🇬🇧 GBP</option>
+              <option value="USD">🇺🇸 USD</option>
+              <option value="EUR">🇩🇪 EUR</option>
+              <option value="SGD">🇸🇬 SGD</option>
+              <option value="AED">🇦🇪 AED</option>
+              <option value="JPY">🇯🇵 JPY</option>
+              <option value="CAD">🇨🇦 CAD</option>
+              <option value="AUD">🇦🇺 AUD</option>
+            </select>
+          </div>
+        </div>
+
+        <span class="fl">To</span>
+        <div class="fi-row">
+          <div class="fi-wrap"><input class="fi" type="text" id="receiver" value="alice@gpay" placeholder="receiver@bank"></div>
+          <div class="fi-cur">
+            <select class="fi" id="toCurrency" onchange="updateConversion()">
+              <option value="INR|India">🇮🇳 INR</option>
+              <option value="GBP|United Kingdom">🇬🇧 GBP</option>
+              <option value="USD|United States">🇺🇸 USD</option>
+              <option value="EUR|Germany">🇩🇪 EUR</option>
+              <option value="SGD|Singapore">🇸🇬 SGD</option>
+              <option value="AED|UAE">🇦🇪 AED</option>
+              <option value="JPY|Japan">🇯🇵 JPY</option>
+              <option value="CAD|Canada">🇨🇦 CAD</option>
+              <option value="AUD|Australia">🇦🇺 AUD</option>
+            </select>
+          </div>
+        </div>
+
+        <span class="fl">Amount</span>
+        <input class="fi amt-input" type="number" id="amount" value="5000" min="1" oninput="updateConversion()">
+
+        <div class="rate-box">
+          <span class="rate-lbl">e-rupee oracle rate</span>
+          <span class="rate-val" id="rate-display">—</span>
+        </div>
+        <div class="conv-box">
+          <span class="conv-lbl">Recipient receives</span>
+          <span class="conv-val" id="converted-display">—</span>
+        </div>
+        <button class="send-btn" id="send-btn" onclick="startPayment()">Send</button>
+      </div>
+    </div>
+
+    <div class="screen" id="screen-track">
+      <div class="card">
+        <div class="track-header">
+          <div class="track-amount" id="track-amt">—</div>
+          <div class="track-to" id="track-to">—</div>
+        </div>
+        <div class="seg-bar">
+          <div class="seg" id="seg1"></div>
+          <div class="seg" id="seg2"></div>
+          <div class="seg" id="seg3"></div>
+        </div>
+        <div class="seg-labels">
+          <span class="seg-lbl" id="lbl1">UPI routing</span>
+          <span class="seg-lbl" id="lbl2">Settlement</span>
+          <span class="seg-lbl" id="lbl3">Delivery</span>
+        </div>
+        <div class="status-line" id="status-line">Waiting...</div>
+        <div id="success-area"></div>
+      </div>
+    </div>
+
+    <div class="screen" id="screen-dash">
+      <div class="card">
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="stat-lbl">Total sent</div>
+            <div class="stat-val" id="stat-total">₹0</div>
+            <div class="stat-sub">this session</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-lbl">Transactions</div>
+            <div class="stat-val" id="stat-count">0</div>
+            <div class="stat-sub">processed</div>
+          </div>
+        </div>
+        <div class="ledger-hdr">Transaction ledger</div>
+        <div class="ledger" id="ledger">
+          <div class="empty-state">No transactions yet. Send a payment to see the ledger update.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="screen" id="screen-net">
+      <div class="card">
+        <div class="node-grid">
+          <div class="node-card" id="node1">
+            <div class="node-name"><span class="node-dot"></span>Validator 1</div>
+            <div class="node-status" id="node1-status">Idle</div>
+            <div class="consensus-bar"><div class="vote" id="v1-1"></div><div class="vote" id="v1-2"></div><div class="vote" id="v1-3"></div><div class="vote" id="v1-4"></div></div>
+          </div>
+          <div class="node-card" id="node2">
+            <div class="node-name"><span class="node-dot"></span>Validator 2</div>
+            <div class="node-status" id="node2-status">Idle</div>
+            <div class="consensus-bar"><div class="vote" id="v2-1"></div><div class="vote" id="v2-2"></div><div class="vote" id="v2-3"></div><div class="vote" id="v2-4"></div></div>
+          </div>
+          <div class="node-card" id="node3">
+            <div class="node-name"><span class="node-dot"></span>Validator 3</div>
+            <div class="node-status" id="node3-status">Idle</div>
+            <div class="consensus-bar"><div class="vote" id="v3-1"></div><div class="vote" id="v3-2"></div><div class="vote" id="v3-3"></div><div class="vote" id="v3-4"></div></div>
+          </div>
+          <div class="node-card" id="node4">
+            <div class="node-name"><span class="node-dot"></span>Validator 4</div>
+            <div class="node-status" id="node4-status">Idle</div>
+            <div class="consensus-bar"><div class="vote" id="v4-1"></div><div class="vote" id="v4-2"></div><div class="vote" id="v4-3"></div><div class="vote" id="v4-4"></div></div>
+          </div>
+        </div>
+        <div class="block-hdr">Block explorer</div>
+        <div class="block-chain" id="block-chain">
+          <div class="net-empty">No blocks yet. Send a payment to see the chain grow.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const mockRates = {
+      toINR: { INR:1, GBP:104.6, USD:83.1, EUR:90.2, SGD:61.7, AED:22.6, JPY:0.545, CAD:61.0, AUD:54.0 },
+      fromINR: { INR:1, GBP:0.00956, USD:0.01205, EUR:0.01108, SGD:0.01621, AED:0.04425, JPY:1.8340, CAD:0.01641, AUD:0.01852 }
+    };
+
+    let liveRates = { toINR: {...mockRates.toINR}, fromINR: {...mockRates.fromINR} };
+    const symbols = { INR:'₹', GBP:'£', USD:'$', EUR:'€', SGD:'S$', AED:'AED ', JPY:'¥', CAD:'C$', AUD:'A$' };
+    const pairs = ['GBP','USD','EUR','SGD','AED','JPY','CAD','AUD'];
+    let oracleRates = {};
+    pairs.forEach(c => oracleRates[c] = mockRates.fromINR[c]);
+    let running = false;
+    let lastBlockCount = 0;
+
+    async function fetchLiveRates() {
+      try {
+        const res = await fetch('https://api.exchangerate-api.com/v4/latest/INR');
+        const data = await res.json();
+        if (data && data.rates) {
+          pairs.forEach(c => {
+            if (data.rates[c]) {
+              oracleRates[c] = data.rates[c];
+              liveRates.fromINR[c] = data.rates[c];
+              liveRates.toINR[c] = 1 / data.rates[c];
+            }
+          });
+          updateOracleDisplay();
+          updateConversion();
+        }
+      } catch(e) {
+        console.log('Using mock rates');
+      }
+    }
+
+    function updateOracleDisplay() {
+      pairs.forEach(c => {
+        for (let i = 0; i < 2; i++) {
+          const el = document.getElementById(`oracle-${c}-${i}`);
+          if (el) el.textContent = oracleRates[c].toFixed(5);
+        }
+      });
+    }
+
+    function buildOracle() {
+      const inner = document.getElementById('oracle-inner');
+      let html = '';
+      for (let i = 0; i < 2; i++) {
+        pairs.forEach(c => {
+          html += `<div class="oracle-item">
+            <span class="o-pair">INR/${c}</span>
+            <span class="o-rate" id="oracle-${c}-${i}">${oracleRates[c].toFixed(5)}</span>
+            <span class="o-change up">▲ live</span>
+          </div>`;
+        });
+      }
+      inner.innerHTML = html;
+    }
+
+    function fluctuateOracle() {
+      pairs.forEach(c => {
+        const delta = (Math.random() - 0.5) * 0.00005;
+        oracleRates[c] = Math.max(0.0001, oracleRates[c] + delta);
+        for (let i = 0; i < 2; i++) {
+          const el = document.getElementById(`oracle-${c}-${i}`);
+          if (el) el.textContent = oracleRates[c].toFixed(5);
+        }
+      });
+    }
+
+    buildOracle();
+    fetchLiveRates();
+    setInterval(fetchLiveRates, 30000);
+    setInterval(fluctuateOracle, 2000);
+
+    function getConvertedAmount(amt, fromCur, toCur) {
+      const inrAmount = amt * liveRates.toINR[fromCur];
+      return inrAmount * liveRates.fromINR[toCur];
+    }
+
+    function updateConversion() {
+      const fromCur = document.getElementById('fromCurrency').value;
+      const toSelect = document.getElementById('toCurrency');
+      const parts = toSelect.value.split('|');
+      const toCur = parts[0];
+      const amt = parseFloat(document.getElementById('amount').value) || 0;
+      const converted = getConvertedAmount(amt, fromCur, toCur);
+      const rate = (liveRates.toINR[fromCur] * liveRates.fromINR[toCur]).toFixed(5);
+      const fromSym = symbols[fromCur];
+      const toSym = symbols[toCur];
+      document.getElementById('rate-display').textContent = `1 ${fromCur} = ${rate} ${toCur}`;
+      document.getElementById('converted-display').textContent = toSym + converted.toFixed(toCur === 'JPY' ? 0 : 2);
+      document.getElementById('send-btn').textContent = `Send ${fromSym}${amt.toLocaleString()}`;
+    }
+
+    function goScreen(id, idx) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('visible'));
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('screen-' + id).classList.add('visible');
+      document.querySelectorAll('.nav-btn')[idx].classList.add('active');
+      if (id === 'dash') loadDashboard();
+      if (id === 'net') loadNetwork();
+    }
+
+    function animateNodes(ref) {
+      const nodes = [1,2,3,4];
+      nodes.forEach(n => {
+        document.getElementById(`node${n}`).className = 'node-card';
+        document.getElementById(`node${n}-status`).textContent = 'Idle';
+        for(let v=1;v<=4;v++) document.getElementById(`v${n}-${v}`).className = 'vote';
+      });
+
+      nodes.forEach((n, i) => {
+        setTimeout(() => {
+          document.getElementById(`node${n}`).className = 'node-card active';
+          document.getElementById(`node${n}-status`).textContent = 'Validating...';
+        }, i * 300);
+
+        setTimeout(() => {
+          document.getElementById(`node${n}`).className = 'node-card approved';
+          document.getElementById(`node${n}-status`).textContent = 'Approved';
+          for(let v=1;v<=4;v++) {
+            setTimeout(() => {
+              document.getElementById(`v${n}-${v}`).className = 'vote cast';
+            }, v * 100);
+          }
+        }, i * 300 + 800);
+      });
+    }
+
+    async function loadNetwork() {
+      try {
+        const res = await fetch('http://localhost:3000/network');
+        const data = await res.json();
+        if (data.blocks.length === 0) {
+          document.getElementById('block-chain').innerHTML = '<div class="net-empty">No blocks yet. Send a payment to see the chain grow.</div>';
+          return;
+        }
+        if (data.blockCount !== lastBlockCount) {
+          lastBlockCount = data.blockCount;
+          animateNodes(data.blocks[0].txnRef);
+        }
+        document.getElementById('block-chain').innerHTML = data.blocks.map((b, i) => `
+          <div class="block-item ${i === 0 ? 'new-block' : ''}">
+            <div class="block-top">
+              <span class="block-num">Block #${b.blockNumber}</span>
+              <span class="block-time">${b.timestamp}</span>
+            </div>
+            <div class="block-hash">Hash: ${b.hash}</div>
+            <div class="block-hash">Prev: ${b.prevHash}</div>
+            <div class="block-txn">${b.txnRef} · ${b.sender} → ${b.receiver} · ${b.country}</div>
+          </div>`).join('');
+      } catch(e) {
+        document.getElementById('block-chain').innerHTML = '<div class="net-empty">Cannot reach server.</div>';
+      }
+    }
+
+    async function startPayment() {
+      if (running) return;
+      const fromCur = document.getElementById('fromCurrency').value;
+      const toSelect = document.getElementById('toCurrency');
+      const parts = toSelect.value.split('|');
+      const toCur = parts[0];
+      const country = parts[1] || '';
+      const amt = parseFloat(document.getElementById('amount').value) || 0;
+      if (amt <= 0) return;
+      const sender = document.getElementById('sender').value || 'sender@upi';
+      const receiver = document.getElementById('receiver').value || 'receiver@upi';
+      const converted = getConvertedAmount(amt, fromCur, toCur);
+      const toSym = symbols[toCur];
+      const fromSym = symbols[fromCur];
+      const inrAmount = amt * liveRates.toINR[fromCur];
+      running = true;
+
+      document.getElementById('track-amt').textContent = `${fromSym}${amt.toLocaleString()} → ${toSym}${converted.toFixed(toCur==='JPY'?0:2)}`;
+      document.getElementById('track-to').textContent = `to ${receiver} · ${country}`;
+      document.getElementById('success-area').innerHTML = '';
+      document.getElementById('status-line').textContent = 'Initiating payment...';
+      ['seg1','seg2','seg3'].forEach(id => document.getElementById(id).className = 'seg');
+      ['lbl1','lbl2','lbl3'].forEach(id => document.getElementById(id).className = 'seg-lbl');
+
+      goScreen('track', 1);
+
+      setTimeout(() => {
+        document.getElementById('seg1').className = 'seg on-blue';
+        document.getElementById('lbl1').className = 'seg-lbl active-blue';
+        document.getElementById('status-line').textContent = 'Routing via NPCI international gateway...';
+      }, 500);
+
+      setTimeout(() => {
+        document.getElementById('seg2').className = 'seg on-purple';
+        document.getElementById('lbl2').className = 'seg-lbl active-purple';
+        document.getElementById('status-line').textContent = `Smart contract locking ${fromSym}${amt.toLocaleString()}...`;
+      }, 2000);
+
+      setTimeout(() => {
+        document.getElementById('seg3').className = 'seg on-teal';
+        document.getElementById('lbl3').className = 'seg-lbl active-teal';
+        document.getElementById('status-line').textContent = `e-rupee issued · ${toSym}${converted.toFixed(2)} released...`;
+      }, 3600);
+
+      try {
+        const res = await fetch('http://localhost:3000/pay', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sender, receiver, amount: inrAmount, fromCurrency: fromCur, currency: toCur, country, convertedAmount: converted.toFixed(2) })
+        });
+        const data = await res.json();
+
+        setTimeout(() => {
+          document.getElementById('status-line').textContent = '';
+          document.getElementById('success-area').innerHTML = `
+            <div class="success-box">
+              <div class="success-circle"><svg class="check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+              <div class="success-title">Payment complete</div>
+              <div class="success-sub">${toSym}${converted.toFixed(2)} delivered to ${receiver}</div>
+              <div class="txn-ref">${data.ref} · settled in 4.8s</div>
+              <button class="new-btn" onclick="goScreen('send',0)">Send another payment</button>
+            </div>`;
+          running = false;
+        }, 5200);
+      } catch(e) {
+        setTimeout(() => {
+          document.getElementById('status-line').textContent = 'Cannot reach server. Make sure it is running.';
+          running = false;
+        }, 5200);
+      }
+    }
+
+    async function loadDashboard() {
+      try {
+        const res = await fetch('http://localhost:3000/dashboard');
+        const data = await res.json();
+        document.getElementById('stat-total').textContent = '₹' + Math.round(data.totalVolume).toLocaleString('en-IN');
+        document.getElementById('stat-count').textContent = data.count;
+        if (data.transactions.length === 0) {
+          document.getElementById('ledger').innerHTML = '<div class="empty-state">No transactions yet. Send a payment to see the ledger update.</div>';
+          return;
+        }
+        document.getElementById('ledger').innerHTML = data.transactions.map(t => `
+          <div class="l-row">
+            <div class="l-dot"></div>
+            <div class="l-info">
+              <div class="l-name">${t.sender} → ${t.receiver}</div>
+              <div class="l-meta">${t.ref} · ${t.country} · ${t.timestamp}</div>
+            </div>
+            <div class="l-right">
+              <div class="l-amt">₹${Math.round(t.amountINR).toLocaleString('en-IN')}</div>
+              <div class="l-conv">→ ${t.converted} ${t.currency}</div>
+              <span class="l-settled">Settled</span>
+            </div>
+          </div>`).join('');
+      } catch(e) {
+        document.getElementById('ledger').innerHTML = '<div class="empty-state">Cannot reach server.</div>';
+      }
+    }
+
+    setInterval(() => {
+      if (document.getElementById('screen-dash').classList.contains('visible')) loadDashboard();
+      if (document.getElementById('screen-net').classList.contains('visible')) loadNetwork();
+    }, 3000);
+
+    updateConversion();
+  </script>
+</body>
+</html>

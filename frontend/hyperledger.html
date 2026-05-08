@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hyperledger CBDC Node</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#080c10;color:#c9d1d9;min-height:100vh;}
+    .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;}
+    .login-box{background:#0d1117;border:1px solid #21262d;border-radius:12px;padding:32px;width:320px;}
+    .login-title{font-size:16px;font-weight:500;color:#e6edf3;margin-bottom:4px;}
+    .login-sub{font-size:12px;color:#484f58;margin-bottom:24px;}
+    .login-input{width:100%;background:#010409;border:1px solid #21262d;border-radius:8px;padding:10px 12px;font-size:13px;color:#e6edf3;outline:none;margin-bottom:12px;box-sizing:border-box;}
+    .login-btn{width:100%;padding:10px;background:#238636;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:500;cursor:pointer;}
+    .login-err{font-size:12px;color:#f85149;margin-top:8px;display:none;}
+    .dashboard{display:none;}
+    .topbar{background:#0d1117;border-bottom:1px solid #21262d;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;}
+    .topbar-title{font-size:14px;font-weight:500;color:#e6edf3;display:flex;align-items:center;gap:10px;}
+    .status-dot{width:8px;height:8px;border-radius:50%;background:#238636;display:inline-block;}
+    .topbar-meta{font-size:11px;color:#484f58;}
+    .main{padding:20px 24px;max-width:1200px;margin:0 auto;}
+    .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+    .stat-card{background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:16px;}
+    .stat-label{font-size:11px;color:#484f58;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;}
+    .stat-val{font-size:22px;font-weight:500;color:#e6edf3;}
+    .stat-sub{font-size:10px;color:#484f58;margin-top:2px;}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
+    .panel{background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:16px;}
+    .panel-title{font-size:12px;font-weight:500;color:#e6edf3;margin-bottom:14px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #21262d;padding-bottom:10px;}
+    .node-list{display:flex;flex-direction:column;gap:8px;}
+    .node-item{display:flex;align-items:center;gap:10px;padding:10px;background:#010409;border-radius:6px;border:1px solid #21262d;}
+    .node-dot{width:8px;height:8px;border-radius:50%;background:#238636;flex-shrink:0;}
+    .node-info{flex:1;}
+    .node-name{font-size:12px;color:#e6edf3;font-weight:500;}
+    .node-addr{font-size:10px;color:#484f58;font-family:monospace;margin-top:1px;}
+    .node-votes{font-size:11px;color:#238636;}
+    .supply-list{display:flex;flex-direction:column;gap:6px;}
+    .supply-item{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#010409;border-radius:6px;border:1px solid #21262d;}
+    .supply-name{font-size:12px;color:#e6edf3;font-weight:500;}
+    .supply-val{font-size:12px;font-weight:500;}
+    .einr-col{color:#58a6ff;}
+    .eother-col{color:#a78bfa;}
+    .supply-bar-wrap{flex:1;margin:0 12px;height:4px;background:#21262d;border-radius:2px;}
+    .supply-bar{height:4px;border-radius:2px;background:#238636;transition:width 0.5s;}
+    .blocks-section{margin-bottom:20px;}
+    .block-table{width:100%;border-collapse:collapse;}
+    .block-table th{font-size:11px;color:#484f58;text-align:left;padding:8px 12px;border-bottom:1px solid #21262d;font-weight:400;text-transform:uppercase;letter-spacing:0.5px;}
+    .block-table td{font-size:12px;color:#c9d1d9;padding:10px 12px;border-bottom:1px solid #161b22;}
+    .block-table tr:hover td{background:#161b22;}
+    .hash-cell{font-family:monospace;color:#58a6ff;font-size:11px;}
+    .confirmed{font-size:10px;padding:2px 8px;background:#0d4429;color:#56d364;border-radius:20px;}
+    .route-upi{font-size:10px;padding:2px 8px;background:#0c2d6b;color:#58a6ff;border-radius:20px;}
+    .route-cbdc{font-size:10px;padding:2px 8px;background:#2d1f5e;color:#a78bfa;border-radius:20px;}
+    .swap-section{margin-bottom:20px;}
+    .swap-item{display:flex;align-items:center;gap:12px;padding:12px;background:#010409;border-radius:6px;border:1px solid #21262d;margin-bottom:6px;}
+    .swap-from{flex:1;text-align:right;}
+    .swap-to{flex:1;}
+    .swap-coin-name{font-size:11px;color:#484f58;}
+    .swap-coin-amt{font-size:14px;font-weight:500;}
+    .swap-arrow-box{background:#0d4429;border-radius:6px;padding:4px 10px;font-size:12px;color:#56d364;}
+    .swap-meta{font-size:10px;color:#484f58;margin-top:2px;}
+    .empty{text-align:center;padding:24px;font-size:12px;color:#484f58;}
+    .refresh-note{font-size:11px;color:#484f58;text-align:right;margin-bottom:8px;}
+  </style>
+</head>
+<body>
+
+<div class="login-wrap" id="login-wrap">
+  <div class="login-box">
+    <div class="login-title">Hyperledger CBDC Node</div>
+    <div class="login-sub">Restricted access — authorised personnel only</div>
+    <input class="login-input" type="text" id="login-user" placeholder="Organisation ID" value="RBI">
+    <input class="login-input" type="password" id="login-pass" placeholder="Access key">
+    <button class="login-btn" onclick="tryLogin()">Access network</button>
+    <div class="login-err" id="login-err">Invalid credentials</div>
+  </div>
+</div>
+
+<div class="dashboard" id="dashboard">
+  <div class="topbar">
+    <div class="topbar-title">
+      <span class="status-dot"></span>
+      Hyperledger Fabric — CBDC Settlement Network
+    </div>
+    <div class="topbar-meta" id="topbar-meta">Blocks: 0 · Volume: ₹0 · Nodes: 4 active</div>
+  </div>
+
+  <div class="main">
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-label">Blocks confirmed</div><div class="stat-val" id="s-blocks">0</div><div class="stat-sub">on chain</div></div>
+      <div class="stat-card"><div class="stat-label">Total volume</div><div class="stat-val" id="s-volume">₹0</div><div class="stat-sub">INR equivalent</div></div>
+      <div class="stat-card"><div class="stat-label">Atomic swaps</div><div class="stat-val" id="s-swaps">0</div><div class="stat-sub">executed</div></div>
+      <div class="stat-card"><div class="stat-label">Avg settlement</div><div class="stat-val">4.8s</div><div class="stat-sub">per transaction</div></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-title">Validator nodes — PBFT consensus</div>
+        <div class="node-list">
+          <div class="node-item"><div class="node-dot"></div><div class="node-info"><div class="node-name">Validator 1</div><div class="node-addr">0x4f2a8c1e9b3d7f</div></div><div class="node-votes" id="nv1">0 votes</div></div>
+          <div class="node-item"><div class="node-dot"></div><div class="node-info"><div class="node-name">Validator 2</div><div class="node-addr">0x7e1c5a9f2b4d8a</div></div><div class="node-votes" id="nv2">0 votes</div></div>
+          <div class="node-item"><div class="node-dot"></div><div class="node-info"><div class="node-name">Validator 3</div><div class="node-addr">0x2d8f3c7e1a5b9c</div></div><div class="node-votes" id="nv3">0 votes</div></div>
+          <div class="node-item"><div class="node-dot"></div><div class="node-info"><div class="node-name">Validator 4</div><div class="node-addr">0x9b5e2d4f7a1c3e</div></div><div class="node-votes" id="nv4">0 votes</div></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">CBDC coin supply</div>
+        <div class="supply-list" id="supply-list">
+          <div class="empty">No data yet</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel swap-section">
+      <div class="panel-title">Atomic swap log</div>
+      <div id="swap-log"><div class="empty">No swaps executed yet. Send a payment to see atomic swaps.</div></div>
+    </div>
+
+    <div class="panel blocks-section">
+      <div class="panel-title">Block explorer</div>
+      <div class="refresh-note">Auto-refreshes every 3 seconds</div>
+      <table class="block-table">
+        <thead><tr><th>Block</th><th>Hash</th><th>Transaction</th><th>Route</th><th>Amount</th><th>Time</th><th>Status</th></tr></thead>
+        <tbody id="block-tbody"><tr><td colspan="7" class="empty">No blocks yet. Send a payment from the main app.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  const PASSWORD = 'RBI@2025';
+  let swapLog = [];
+
+  function tryLogin() {
+    const pass = document.getElementById('login-pass').value;
+    if (pass === PASSWORD) {
+      document.getElementById('login-wrap').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'block';
+      loadAll();
+      setInterval(loadAll, 3000);
+    } else {
+      document.getElementById('login-err').style.display = 'block';
+    }
+  }
+
+  document.getElementById('login-pass').addEventListener('keydown', e => { if(e.key==='Enter') tryLogin(); });
+
+  async function loadAll() {
+    try {
+      const [statsRes, chainRes, supplyRes] = await Promise.all([
+        fetch('http://localhost:3001/stats'),
+        fetch('http://localhost:3001/chain'),
+        fetch('http://localhost:3001/supply')
+      ]);
+      const stats = await statsRes.json();
+      const chain = await chainRes.json();
+      const supply = await supplyRes.json();
+      renderStats(stats);
+      renderChain(chain);
+      renderSupply(supply);
+    } catch(e) {
+      console.log('Cannot reach Hyperledger node');
+    }
+  }
+
+  function renderStats(s) {
+    document.getElementById('s-blocks').textContent = s.blockCount;
+    document.getElementById('s-volume').textContent = '₹' + Math.round(s.totalVolume).toLocaleString('en-IN');
+    document.getElementById('s-swaps').textContent = s.swapCount;
+    document.getElementById('topbar-meta').textContent = `Blocks: ${s.blockCount} · Volume: ₹${Math.round(s.totalVolume).toLocaleString('en-IN')} · Nodes: 4 active`;
+    [1,2,3,4].forEach(n => {
+      document.getElementById(`nv${n}`).textContent = s.blockCount + ' votes';
+    });
+  }
+
+  function renderChain(chain) {
+    if (!chain.blocks || chain.blocks.length === 0) return;
+
+    chain.blocks.forEach(b => {
+      if (b.swap && !swapLog.find(s => s.swapId === b.swap.swapId)) {
+        swapLog.unshift(b.swap);
+      }
+    });
+
+    const tbody = document.getElementById('block-tbody');
+    tbody.innerHTML = chain.blocks.map(b => `
+      <tr>
+        <td>#${b.blockNumber}</td>
+        <td class="hash-cell">${b.hash.slice(0,18)}...</td>
+        <td>${b.txnRef} · ${b.sender} → ${b.receiver}</td>
+        <td><span class="${b.route === 'UPI' ? 'route-upi' : 'route-cbdc'}">${b.route}</span></td>
+        <td>₹${Math.round(b.amountINR).toLocaleString('en-IN')} → ${b.convertedAmount} ${b.toCurrency}</td>
+        <td>${b.timeFormatted}</td>
+        <td><span class="confirmed">Confirmed</span></td>
+      </tr>`).join('');
+
+    const swapHtml = swapLog.length === 0
+      ? '<div class="empty">No swaps yet.</div>'
+      : swapLog.map(s => `
+        <div class="swap-item">
+          <div class="swap-from">
+            <div class="swap-coin-name">${s.fromCoin}</div>
+            <div class="swap-coin-amt einr-col">-${parseFloat(s.burnedAmount).toLocaleString()}</div>
+            <div class="swap-meta">burned</div>
+          </div>
+          <div class="swap-arrow-box">atomic swap</div>
+          <div class="swap-to">
+            <div class="swap-coin-name">${s.toCoin}</div>
+            <div class="swap-coin-amt eother-col">+${s.mintedAmount}</div>
+            <div class="swap-meta">minted · ${s.counterpartyRisk} counterparty risk</div>
+          </div>
+        </div>`).join('');
+    document.getElementById('swap-log').innerHTML = swapHtml;
+  }
+
+  function renderSupply(supply) {
+    if (!supply.coinSupply) return;
+    const coins = supply.coinSupply;
+    const maxVal = Math.max(...Object.values(coins));
+    const html = Object.entries(coins).map(([coin, amount]) => `
+      <div class="supply-item">
+        <span class="supply-name">${coin}</span>
+        <div class="supply-bar-wrap"><div class="supply-bar" style="width:${Math.round((amount/maxVal)*100)}%"></div></div>
+        <span class="supply-val ${coin==='eINR'?'einr-col':'eother-col'}">${parseFloat(amount).toLocaleString()}</span>
+      </div>`).join('');
+    document.getElementById('supply-list').innerHTML = html;
+  }
+</script>
+</body>
+</html>
